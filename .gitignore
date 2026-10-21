@@ -1,0 +1,19 @@
+node_modules/
+ui-preview.png
+*.zip
+.env
+.env.*
+!.env.example
+.npm-cache/
+
+# Local dependencies, logs and browser test artifacts
+*.log
+coverage/
+playwright-report/
+test-results/
+.browser-profile/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini

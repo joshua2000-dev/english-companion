@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "拾词 · English Companion",
+  "version": "1.0.1",
+  "description": "划词翻译、中英互译、生词收藏与间隔复习。支持自定义大模型 API。",
+  "minimum_chrome_version": "114",
+  "permissions": ["storage"],
+  "host_permissions": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_title": "拾词 · 翻译与学习" },
+  "options_page": "app.html",
+  "content_scripts": [{ "matches": ["http://*/*", "https://*/*"], "js": ["content.js"], "run_at": "document_idle", "all_frames": true }]
+}
