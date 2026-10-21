@@ -1,4 +1,4 @@
-import { defaults, endpointURL, normalize, schedule, parseTranslation } from './core.mjs';
+import { defaults, endpointURL, normalize, schedule, parseTranslation, sourceURL } from './core.mjs';
 const ready = chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
 let writes = Promise.resolve();
 function write(task) { const result = writes.then(task); writes = result.catch(() => {}); return result; }
@@ -33,28 +33,37 @@ async function handle(m, sender) {
     url.search = ''; url.hash = '';
     trusted = sender.id === chrome.runtime.id && ['app.html', 'popup.html'].some(page => url.href === chrome.runtime.getURL(page));
   } catch {}
-  if (m.type === 'publicSettings') { const s = await settings(); return { enabled: s.enabled, direction: s.direction }; }
+  if (m.type === 'publicSettings') { const s = await settings(); return { enabled: s.enabled, direction: s.direction, language: s.language }; }
   if (m.type === 'translate') return translate(m.text, m.direction || (await settings()).direction);
   if (m.type === 'save') return write(async () => {
     const r = m.entry;
     if (!r || typeof r.text !== 'string' || !r.text.trim() || r.text.length > 6000 || typeof r.translation !== 'string' || r.translation.length > 14000) throw new Error('收藏内容无效');
     const { words = [] } = await chrome.storage.local.get('words');
     if (words.some(w => normalize(w.text) === normalize(r.text))) return { duplicate: true };
-    const source = typeof r.source === 'string' && /^https?:\/\//.test(r.source) ? r.source.slice(0, 2048) : '';
+    const source = sourceURL(sender.tab ? (sender.tab.url || sender.url) : r.source);
     words.unshift({ id: crypto.randomUUID(), text: r.text.trim(), translation: r.translation, explanation: typeof r.explanation === 'string' ? r.explanation.slice(0, 10000) : '', source, created: Date.now(), due: Date.now(), step: 0, reviews: 0 });
     await chrome.storage.local.set({ words }); return { saved: true };
   });
   if (m.type === 'open') { await chrome.runtime.openOptionsPage(); return true; }
   if (!trusted) throw new Error('此操作仅允许在插件页面使用');
+  if (m.type === 'setLanguage') return write(async () => {
+    const s = await settings(); s.language = m.language === 'en' ? 'en' : 'zh';
+    await chrome.storage.local.set({ settings: s }); return s.language;
+  });
   if (m.type === 'getSettings') return settings();
   if (m.type === 'setSettings') return write(async () => {
     const s = m.settings;
     if (!s || typeof s.endpoint !== 'string' || typeof s.model !== 'string' || !s.model.trim() || typeof s.apiKey !== 'string') throw new Error('请完整填写接口地址和模型名称');
-    await chrome.storage.local.set({ settings: { provider: String(s.provider), endpoint: endpointURL(s.endpoint), model: s.model.trim(), apiKey: s.apiKey.trim(), enabled: !!s.enabled, direction: ['auto', 'zh', 'en'].includes(s.direction) ? s.direction : 'auto' } }); return true;
+    await chrome.storage.local.set({ settings: { provider: String(s.provider), endpoint: endpointURL(s.endpoint), model: s.model.trim(), apiKey: s.apiKey.trim(), enabled: !!s.enabled, direction: ['auto', 'zh', 'en'].includes(s.direction) ? s.direction : 'auto', language: (await settings()).language } }); return true;
   });
   if (m.type === 'words') return (await chrome.storage.local.get('words')).words || [];
   if (m.type === 'delete' || m.type === 'review') return write(async () => {
     let { words = [] } = await chrome.storage.local.get('words');
+    if (m.type === 'review') {
+      const word = words.find(w => w.id === m.id);
+      if (!word) throw new Error('这条生词已被删除，请刷新页面');
+      if (word.due > Date.now()) throw new Error('尚未到复习时间，请按日程复习');
+    }
     words = m.type === 'delete' ? words.filter(w => w.id !== m.id) : words.map(w => w.id === m.id ? schedule(w, m.rating === 'again' ? 'again' : 'good') : w);
     await chrome.storage.local.set({ words }); return true;
   });

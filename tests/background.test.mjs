@@ -37,12 +37,34 @@ test('foreign extensions, web pages and unapproved extension paths are denied', 
     assert.equal((await call({ type: 'setSettings', settings: {} }, sender)).ok, false);
   }
 });
+test('UI language persists independently of model settings and is public without secrets', async () => {
+  const original = structuredClone(storage.settings);
+  assert.equal((await call({ type: 'setLanguage', language: 'en' })).data, 'en');
+  assert.equal(storage.settings.apiKey, original.apiKey);
+  assert.equal((await call({ type: 'publicSettings' }, content)).data.language, 'en');
+  assert.equal((await call({ type: 'setLanguage', language: 'zh' }, content)).ok, false);
+  await call({ type: 'setSettings', settings: { ...original, language: 'zh' } });
+  assert.equal(storage.settings.language, 'en');
+});
+test('web saves preserve complete authoritative sender URL, not a supplied URL', async () => {
+  const source = 'https://example.com/article?id=123#section';
+  const entry = {text: 'contextual learning', translation: '情境学习', source:'https://other.example/forged'};
+  assert.equal((await call({ type:'save', entry }, { ...content, url: source })).ok, true);
+  assert.equal(storage.words[0].source, source);
+  // Leave the independent save-count test starting from its expected empty store.
+  await call({type:'delete', id:storage.words[0].id});
+  await call({ type:'save', entry }, { ...content, url:'https://embedded.example/frame', tab:{id:1,url:source} });
+  assert.equal(storage.words[0].source, source);
+  await call({type:'delete', id:storage.words[0].id});
+});
 test('simultaneous saves do not overwrite each other; duplicate is rejected', async () => {
   await Promise.all(['hello', 'world'].map(text => call({ type: 'save', entry: { text, translation: '译文' } }, content)));
   assert.equal(storage.words.length, 2);
   assert.equal((await call({ type: 'save', entry: { text: ' HELLO ', translation: '译文' } }, content)).data.duplicate, true);
   const id = storage.words[0].id;
   await call({ type: 'review', id, rating: 'good' }); assert.equal(storage.words.find(w => w.id === id).step, 1);
+  const result = await call({type:'review', id, rating:'good'});
+  assert.equal(result.ok,false);assert.equal(storage.words.find(w=>w.id===id).reviews,1);
   await call({ type: 'delete', id }); assert.equal(storage.words.length, 1);
 });
 test('translation uses saved endpoint and reports provider errors without leaking key', async () => {
