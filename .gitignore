@@ -17,3 +17,22 @@ test-results/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Personal study data and browser profiles (never publish)
+data/
+exports/
+export/
+backups/
+profiles/
+chrome-data/
+extension-storage/
+storage/
+screenshots/
+*生词本*.json
+vocabulary*.json
+words*.json
+settings*.json
+credentials*.json
+secrets*.json
+*.pem
+*.key

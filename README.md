@@ -1,6 +1,25 @@
 # 拾词 · English Companion
 
-无需构建、无需安装依赖的 Chrome Manifest V3 扩展。
+在阅读中积累英语表达，再通过主动回忆与间隔复习把它们留下来。支持中文与英文界面。
+
+当前版本：**1.2.0**。这是一个无需构建、无需运行后端、无需安装运行依赖的 Chrome Manifest V3 扩展；需要用户自行配置模型服务或本地模型。
+
+## 功能一览
+
+- **划选翻译**：单词、词组、句子的中英互译，以及用法与例句。
+- **自选模型**：DeepSeek、智谱、OpenAI、Ollama 或其他 OpenAI 兼容接口。
+- **本地生词本**：收藏、搜索、删除与 JSON 导出。
+- **回到语境**：生词卡和复习卡提供低调的「阅读原文」入口。
+- **间隔复习**：八个回忆检查点、未来七天安排、进度条与掌握状态。
+- **双语界面**：中文 / English 随时切换并保存偏好。
+
+## 仓库与个人数据
+
+本仓库只发布源代码、文档和使用虚构数据的测试。**不要将自己的 API Key、生词导出、浏览器配置目录或个人阅读记录提交到 Git。**
+
+实际 API Key、生词、来源 URL 与学习进度由插件存入浏览器的 `chrome.storage.local`，并不写入项目源文件，也不会随 Git 提交自动上传。源码中的 `apiKey` 等字段名、空默认值及测试中的 `fake-key` / `test-secret` 等仅是程序定义或虚构测试值。
+
+`.gitignore` 已排除 `.env`、私钥、常见生词导出文件、`data/`、`exports/`、`backups/`、浏览器配置与截图等目录。建议将自己的备份统一放到被忽略的 `exports/` 或 `backups/` 中；忽略规则不会自动保护已经被 Git 跟踪的文件。提交前可用 `git status --short` 和 `git diff --cached` 检查。
 
 ## 安装
 
@@ -60,10 +79,22 @@
 
 ## 开发与验证
 
-运行 `npm test`（Node 20+）。测试覆盖 URL 校验、模型响应解析、复习调度、密钥访问限制、并发收藏、重复收藏和模拟 API 请求。
+运行 `npm test`（Node 20+，无须安装依赖）。测试覆盖 URL 校验、模型响应解析、复习调度、密钥访问限制、并发收藏、重复收藏和模拟 API 请求。
 
-可选浏览器检查：安装 Playwright 并运行 `node tests/browser-smoke.mjs`；优先使用本机 Chrome/Edge，也可通过 `CHROME_PATH` 指定可执行文件。该检查使用模拟 Chrome API 和模拟翻译结果，验证页面交互与内容脚本；不等同于加载真实扩展或连接真实模型。
+可选浏览器检查：先运行 `npm install --no-save playwright`，再运行 `node tests/browser-smoke.mjs`；优先使用本机 Chrome/Edge，也可通过 `CHROME_PATH` 指定可执行文件；没有本机浏览器时，可运行 `npx playwright install chromium` 安装测试浏览器。该检查使用模拟 Chrome API 和模拟翻译结果，验证页面交互与内容脚本；不等同于加载真实扩展或连接真实模型。Playwright 仅用于开发测试，使用插件不需要安装。
 
 手动验收：配置接口并测试 → 打开普通文章网页并刷新 → 划选英文/中文/词组/句子 → 收藏 → 搜索 → 复习揭晓与评分 → 导出 → 重启浏览器检查数据。再检查错误 Key、超时和停用划词。
 
+## 常见问题
+
+- **修改代码后没有变化**：到 `chrome://extensions` 重新加载扩展，再刷新设置页和已打开的文章网页。
+- **配置已保存但连接失败**：检查完整的 `/chat/completions` 地址、模型 ID、Key、余额和网络。测试按钮使用已经保存的配置。
+- **有的页面不能划词**：Chrome 内置页面等受浏览器限制，可改用工具栏手动输入。
+- **暂时没有待复习内容**：未到期的记录只显示在日程中，不允许提前重复评分；到期后自动进入队列。
+- **导出文件可以公开分享吗**：导出不含 API Key，但包含词语、译文、完整来源 URL 和学习记录，属于个人数据。
+
 参考：[Chrome storage](https://developer.chrome.com/docs/extensions/reference/api/storage)、[DeepSeek API](https://api-docs.deepseek.com/)、[智谱文档](https://docs.bigmodel.cn/)。
+
+## 许可证
+
+本项目使用 [MIT License](LICENSE)。
